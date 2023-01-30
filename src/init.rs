@@ -43,7 +43,7 @@ impl SmartModuleInit {
         let slice = ctx.write_input(&input, &mut *store,engine)?;
         let init_output = self.0.call(&mut engine.executor, vec![WasmValue::from_i32(slice.0),WasmValue::from_i32(slice.1),WasmValue::from_i32(slice.2 as i32)])?;
 
-        // println!("Output: {}", init_output[0].to_i32());
+        println!("Output: {}", init_output[0].to_i32());
         // if init_output < 0 {
         //     let internal_error = SmartModuleInitErrorStatus::try_from(init_output)
         //         .unwrap_or(SmartModuleInitErrorStatus::UnknownError);

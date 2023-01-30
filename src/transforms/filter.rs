@@ -10,7 +10,7 @@ use fluvio_smartmodule::dataplane::smartmodule::{
 };
 
 use crate::{
-    instance::{SmartModuleInstanceContext, SmartModuleTransform},
+    instance::{SmartModuleInstanceContext, SmartModuleTransform}, SmartEngine,
 };
 
 const FILTER_FN_NAME: &str = "filter";
@@ -41,9 +41,11 @@ impl SmartModuleTransform for SmartModuleFilter {
         input: SmartModuleInput,
         ctx: &mut SmartModuleInstanceContext,
         store: &mut Store,
+        engine: &mut SmartEngine
     ) -> Result<SmartModuleOutput> {
-        // let slice = ctx.write_input(&input, &mut *store)?;
-        // let filter_output = self.0.call(&mut *store, slice)?;
+
+        let slice = ctx.write_input(&input, &mut *store,engine)?;
+        let filter_output = self.0.call(&mut engine.executor, vec![WasmValue::from_i32(slice.0),WasmValue::from_i32(slice.1),WasmValue::from_i32(slice.2 as i32)])?;
 
         // if filter_output < 0 {
         //     let internal_error = SmartModuleTransformErrorStatus::try_from(filter_output)
@@ -51,11 +53,8 @@ impl SmartModuleTransform for SmartModuleFilter {
         //     return Err(internal_error.into());
         // }
 
-        let output = SmartModuleOutput::default();
+        let output: SmartModuleOutput = ctx.read_output(store)?;
         Ok(output)
-        // Ok(SmartModuleOutput { successes: 1, error: () })
-        // let output: SmartModuleOutput = ctx.read_output(store)?;
-        // Ok(output)
     }
 
     fn name(&self) -> &str {
@@ -78,7 +77,7 @@ mod test {
     };
 
     use crate::{
-        SmartEngine, SmartModuleChainBuilder, SmartModuleConfig 
+        SmartEngine, SmartModuleChainBuilder, SmartModuleConfig, metrics::SmartModuleChainMetrics 
     };
 
     const SM_FILTER: &str = "fluvio_smartmodule_filter";
@@ -126,25 +125,29 @@ mod test {
         // assert_eq!(output.successes[0].value.as_ref(), b"apple");
     }
 
-    // #[ignore]
-    // #[test]
-    // fn test_filter_with_init_invalid_param() {
-    //     let engine = SmartEngine::new();
-    //     let mut chain_builder = SmartModuleChainBuilder::default();
+    #[ignore]
+    #[test]
+    fn test_filter_with_init_invalid_param() {
+        let config = ConfigBuilder::default().build().unwrap();
+        let mut executor = Executor::new(Some(&config),None).unwrap();
+        let mut engine = SmartEngine {
+            executor 
+        };
 
-    //     chain_builder.add_smart_module(
-    //         SmartModuleConfig::builder().build().unwrap(),
-    //         read_wasm_module(SM_FILTER_INIT),
-    //     );
+        let mut chain_builder = SmartModuleChainBuilder::default();
 
-    //     assert_eq!(
-    //         chain_builder
-    //             .initialize(&engine)
-    //             .expect_err("should return param error")
-    //             .to_string(),
-    //         "Missing param key\n\nSmartModule Init Error: \n"
-    //     );
-    // }
+        chain_builder.add_smart_module(
+            SmartModuleConfig::builder().build().unwrap(),
+            read_wasm_module(SM_FILTER_INIT),
+        );
+        assert_eq!(
+            chain_builder
+                .initialize(&mut engine)
+                .expect_err("should return param error")
+                .to_string(),
+            "Missing param key\n\nSmartModule Init Error: \n"
+        );
+    }
 
     #[ignore]
     #[test]
@@ -180,19 +183,19 @@ mod test {
 
         assert!(instance.get_init().is_some());
 
-        // let metrics = SmartModuleChainMetrics::default();
+        let metrics = SmartModuleChainMetrics::default();
 
-        // let input = vec![Record::new("hello world")];
-        // let output = chain
-        //     .process(SmartModuleInput::try_from(input).expect("input"), &metrics)
-        //     .expect("process");
-        // assert_eq!(output.successes.len(), 0); // no records passed
+        let input = vec![Record::new("hello world")];
+        let output = chain
+            .process(SmartModuleInput::try_from(input).expect("input"), &metrics,&mut engine)
+            .expect("process");
+        assert_eq!(output.successes.len(), 0); // no records passed
 
-        // let input = vec![
-        //     Record::new("apple"),
-        //     Record::new("fruit"),
-        //     Record::new("banana"),
-        // ];
+        let input = vec![
+            Record::new("apple"),
+            Record::new("fruit"),
+            Record::new("banana"),
+        ];
 
         // let output = chain
         //     .process(SmartModuleInput::try_from(input).expect("input"), &metrics)

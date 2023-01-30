@@ -4,7 +4,7 @@ cfg_if::cfg_if! {
         pub(crate) mod transforms;
         pub(crate) mod init;
         pub(crate) mod error;
-        // pub mod metrics;
+        pub mod metrics;
         mod engine;
         // mod state;
         pub use engine::*;

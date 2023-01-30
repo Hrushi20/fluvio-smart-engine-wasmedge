@@ -2,7 +2,7 @@ use std::any::Any;
 use std::sync::{Arc, Mutex};
 use std::fmt::{self, Debug};
 
-use fluvio_protocol::Encoder;
+use fluvio_protocol::{Encoder, Decoder};
 use wasmedge_sdk::{ImportObject, ImportObjectBuilder, Func};
 use wasmedge_sdk::{Module,Store,Instance,CallingFrame,WasmValue,error::HostFuncError};
 use wasmedge_sys::{Memory};
@@ -55,8 +55,9 @@ impl SmartModuleInstance {
         &mut self,
         input: SmartModuleInput,
         store: &mut Store,
+        engine: &mut SmartEngine
     ) -> Result<SmartModuleOutput> {
-        self.transform.process(input, &mut self.ctx, store)
+        self.transform.process(input, &mut self.ctx, store,engine)
     }
 
     pub fn init(&mut self, store: &mut Store,engine:&mut SmartEngine) -> Result<(), Error> {
@@ -155,16 +156,16 @@ impl SmartModuleInstanceContext{
         Ok((array_ptr as i32, length as i32, self.version as u32))
     }
 
-    // pub(crate) fn read_output<D: Decoder + Default>(&mut self, store: impl AsContext) -> Result<D> {
-    //     let bytes = self
-    //         .records_cb
-    //         .get()
-    //         .and_then(|m| m.copy_memory_from(store).ok())
-    //         .unwrap_or_default();
-    //     let mut output = D::default();
-    //     output.decode(&mut std::io::Cursor::new(bytes), self.version)?;
-    //     Ok(output)
-    // }
+    pub(crate) fn read_output<D: Decoder + Default>(&mut self, store: &mut Store) -> Result<D> {
+        let bytes = self
+            .records_cb
+            .get()
+            .and_then(|m| m.copy_memory_from(store).ok())
+            .unwrap_or_default();
+        let mut output = D::default();
+        output.decode(&mut std::io::Cursor::new(bytes), self.version)?;
+        Ok(output)
+    }
 }
 
 pub(crate) trait SmartModuleTransform: Send + Sync {
@@ -174,6 +175,7 @@ pub(crate) trait SmartModuleTransform: Send + Sync {
         input: SmartModuleInput,
         ctx: &mut SmartModuleInstanceContext,
         store: &mut Store,
+        engine: &mut SmartEngine
     ) -> Result<SmartModuleOutput>;
 
     /// return name of transform, this is used for identifying transform and debugging
@@ -191,10 +193,19 @@ impl<T: SmartModuleTransform + Any> DowncastableTransform for T {
     }
 }
 
+
 pub struct RecordsMemory {
     ptr: i32,
     len: i32,
     memory: Memory,
+}
+
+impl RecordsMemory {
+    fn copy_memory_from(&self, store: &mut Store) -> Result<Vec<u8>> {
+        let mut bytes = self.memory.get_data(self.ptr as u32, self.len as u32).unwrap();
+        // self.memory.read(store, self.ptr as usize, &mut bytes)?;
+        Ok(bytes)
+    }
 }
 
 pub struct RecordsCallBack(Mutex<Option<RecordsMemory>>);
@@ -212,5 +223,10 @@ impl RecordsCallBack {
     pub(crate) fn clear(&self) {
         let mut write_inner = self.0.lock().unwrap();
         write_inner.take();
+    }
+
+    pub(crate) fn get(&self) -> Option<RecordsMemory> {
+        let reader = self.0.lock().unwrap();
+        // *reader
     }
 }
