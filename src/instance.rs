@@ -2,6 +2,7 @@ use std::any::Any;
 use std::sync::{Arc, Mutex};
 use std::fmt::{self, Debug};
 
+use fluvio_protocol::Encoder;
 use wasmedge_sdk::{ImportObject, ImportObjectBuilder, Func};
 use wasmedge_sdk::{Module,Store,Instance,CallingFrame,WasmValue,error::HostFuncError};
 use wasmedge_sys::{Memory};
@@ -13,6 +14,7 @@ use fluvio_smartmodule::dataplane::smartmodule::{
 };
 
 use crate::error::EngineError;
+use crate::init::SmartModuleInit;
 // use crate::init::SmartModuleInit;
 use crate::{WasmSlice, memory, SmartEngine};
 // use crate::state::WasmState;
@@ -20,6 +22,7 @@ use crate::{WasmSlice, memory, SmartEngine};
 
 pub(crate) struct SmartModuleInstance {
     ctx: SmartModuleInstanceContext,
+    init: Option<SmartModuleInit>,
     transform: Box<dyn DowncastableTransform>,
 }
 
@@ -31,12 +34,19 @@ impl SmartModuleInstance {
         &self.transform
     }
 
+    #[cfg(test)]
+    pub(crate) fn get_init(&self) -> &Option<SmartModuleInit> {
+        &self.init
+    }
+
     pub(crate) fn new(
         ctx: SmartModuleInstanceContext,
+        init: Option<SmartModuleInit>,
         transform: Box<dyn DowncastableTransform>,
     ) -> Self {
         Self {
             ctx,
+            init,
             transform,
         }
     }
@@ -47,6 +57,17 @@ impl SmartModuleInstance {
         store: &mut Store,
     ) -> Result<SmartModuleOutput> {
         self.transform.process(input, &mut self.ctx, store)
+    }
+
+    pub fn init(&mut self, store: &mut Store,engine:&mut SmartEngine) -> Result<(), Error> {
+        if let Some(init) = &mut self.init {
+            let input = SmartModuleInitInput {
+                params: self.ctx.params.clone(),
+            };
+            init.initialize(input, &mut self.ctx, store,engine)
+        } else {
+            Ok(())
+        }
     }
 
 }
@@ -108,9 +129,42 @@ impl SmartModuleInstanceContext{
         })
     }
 
-    pub(crate) fn get_wasm_func(&self, store: &mut Store, name: &str) -> Option<Func> {
+    pub(crate) fn get_wasm_func(&self, name: &str) -> Option<Func> {
+        println!("{:?}",self.instance.func_names());
         self.instance.func(name)
     }
+
+
+    pub(crate) fn write_input<E: Encoder>(
+        &mut self,
+        input: &E,
+        store: &mut Store,
+        engine: &mut SmartEngine
+    ) -> Result<WasmSlice> {
+        self.records_cb.clear();
+        let mut input_data = Vec::new();
+        input.encode(&mut input_data, self.version)?;
+        debug!(
+            len = input_data.len(),
+            version = self.version,
+            "input encoded"
+        );
+        let array_ptr = memory::copy_memory_to_instance(store, &self.instance, &input_data,engine)?;
+        let length = input_data.len();
+        println!("Array_Ptr: {}, Length: {}, Version: {}",array_ptr,length,self.version);
+        Ok((array_ptr as i32, length as i32, self.version as u32))
+    }
+
+    // pub(crate) fn read_output<D: Decoder + Default>(&mut self, store: impl AsContext) -> Result<D> {
+    //     let bytes = self
+    //         .records_cb
+    //         .get()
+    //         .and_then(|m| m.copy_memory_from(store).ok())
+    //         .unwrap_or_default();
+    //     let mut output = D::default();
+    //     output.decode(&mut std::io::Cursor::new(bytes), self.version)?;
+    //     Ok(output)
+    // }
 }
 
 pub(crate) trait SmartModuleTransform: Send + Sync {

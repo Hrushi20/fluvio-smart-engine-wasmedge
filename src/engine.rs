@@ -10,7 +10,7 @@ use fluvio_smartmodule::dataplane::smartmodule::{
     SmartModuleExtraParams, SmartModuleInput, SmartModuleOutput,
 };
 
-use crate::{transforms::{self, create_transform}, instance::{SmartModuleInstanceContext, SmartModuleInstance}};
+use crate::{transforms::{self, create_transform}, instance::{SmartModuleInstanceContext, SmartModuleInstance}, init::SmartModuleInit};
 
 const DEFAULT_SMARTENGINE_VERSION: i16 = 17;
 pub struct SmartEngine{
@@ -54,9 +54,10 @@ impl SmartModuleChainBuilder {
 
             let ctx = SmartModuleInstanceContext::instantiate(&mut store, module, config.params, version,engine).expect("Smart module context");
 
+            let init = SmartModuleInit::try_instantiate(&ctx, &mut store)?;
             let transform = create_transform(&ctx, config.initial_data, &mut store)?;
-            let mut instance = SmartModuleInstance::new(ctx, transform);
-            // instance.init(&mut store)?;
+            let mut instance = SmartModuleInstance::new(ctx,init, transform);
+            instance.init(&mut store,engine)?;
             instances.push(instance);
         }
         
@@ -81,6 +82,13 @@ pub struct SmartModuleChainInstance {
 impl Debug for SmartModuleChainInstance {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "SmartModuleChainInstance")
+    }
+}
+
+impl SmartModuleChainInstance{
+    #[cfg(test)]
+    pub(crate) fn instances(&self) -> &Vec<SmartModuleInstance> {
+        &self.instances
     }
 }
 

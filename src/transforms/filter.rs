@@ -31,7 +31,7 @@ impl SmartModuleFilter {
         ctx: &SmartModuleInstanceContext,
         store: &mut Store 
     ) -> Result<Option<Self>> {
-        Ok(Some(Self(ctx.get_wasm_func(store, FILTER_FN_NAME).unwrap())))
+        Ok(Some(Self(ctx.get_wasm_func(FILTER_FN_NAME).unwrap())))
     }
 }
 
@@ -106,10 +106,10 @@ mod test {
             .initialize(&mut engine)
             .expect("failed to build chain");
 
-        // assert_eq!(
-        //     chain.instances().first().expect("first").transform().name(),
-        //     super::FILTER_FN_NAME
-        // );
+        assert_eq!(
+            chain.instances().first().expect("first").transform().name(),
+            super::FILTER_FN_NAME
+        )
 
         // let metrics = SmartModuleChainMetrics::default();
         // let input = vec![Record::new("hello world")];
@@ -146,88 +146,84 @@ mod test {
     //     );
     // }
 
-    // #[ignore]
-    // #[test]
-    // fn test_filter_with_init_ok() {
+    #[ignore]
+    #[test]
+    fn test_filter_with_init_ok() {
 
-    //     // create a config with the `wasi` option enabled
-    //     let config = ConfigBuilder::default().build().unwrap();
+        let config = ConfigBuilder::default().build().unwrap();
+        let mut executor = Executor::new(Some(&config),None).unwrap();
+        let mut engine = SmartEngine {
+            executor 
+        };
 
-    //     // create a VM with the config
-    //     let vm = Vm::new(Some(config)).unwrap();
+        let mut chain_builder = SmartModuleChainBuilder::default();
 
-    //     let bytes = read_wasm_module(SM_FILTER_INIT);
+        chain_builder.add_smart_module(
+            SmartModuleConfig::builder()
+                .param("key", "a")
+                .build()
+                .unwrap(),
+            read_wasm_module(SM_FILTER_INIT),
+        );
 
-    //     vm.register_module_from_bytes("env", bytes);
+        let mut chain = chain_builder
+            .initialize(&mut engine)
+            .expect("failed to build chain");
+        
+        let instance = chain.instances().first().expect("first");
 
-    //     let engine = SmartEngine::new();
-    //     let mut chain_builder = SmartModuleChainBuilder::default();
 
-    //     chain_builder.add_smart_module(
-    //         SmartModuleConfig::builder()
-    //             .param("key", "a")
-    //             .build()
-    //             .unwrap(),
-    //         read_wasm_module(SM_FILTER_INIT),
-    //     );
+        assert_eq!(
+            instance.transform().name(),
+            super::FILTER_FN_NAME
+        );
 
-    //     let mut chain = chain_builder
-    //         .initialize(&engine)
-    //         .expect("failed to build chain");
+        assert!(instance.get_init().is_some());
 
-    //     let instance = chain.instances().first().expect("first");
+        // let metrics = SmartModuleChainMetrics::default();
 
-    //     assert_eq!(
-    //         instance.transform().name(),
-    //         crate::transforms::filter::FILTER_FN_NAME
-    //     );
+        // let input = vec![Record::new("hello world")];
+        // let output = chain
+        //     .process(SmartModuleInput::try_from(input).expect("input"), &metrics)
+        //     .expect("process");
+        // assert_eq!(output.successes.len(), 0); // no records passed
 
-    //     assert!(instance.get_init().is_some());
+        // let input = vec![
+        //     Record::new("apple"),
+        //     Record::new("fruit"),
+        //     Record::new("banana"),
+        // ];
 
-    //     let metrics = SmartModuleChainMetrics::default();
+        // let output = chain
+        //     .process(SmartModuleInput::try_from(input).expect("input"), &metrics)
+        //     .expect("process");
+        // assert_eq!(output.successes.len(), 2); // one record passed
+        // assert_eq!(output.successes[0].value.as_ref(), b"apple");
+        // assert_eq!(output.successes[1].value.as_ref(), b"banana");
 
-    //     let input = vec![Record::new("hello world")];
-    //     let output = chain
-    //         .process(SmartModuleInput::try_from(input).expect("input"), &metrics)
-    //         .expect("process");
-    //     assert_eq!(output.successes.len(), 0); // no records passed
+        // // build 2nd chain with different parameter
+        // let mut chain_builder = SmartModuleChainBuilder::default();
+        // chain_builder.add_smart_module(
+        //     SmartModuleConfig::builder()
+        //         .param("key", "b")
+        //         .build()
+        //         .unwrap(),
+        //     read_wasm_module(SM_FILTER_INIT),
+        // );
 
-    //     let input = vec![
-    //         Record::new("apple"),
-    //         Record::new("fruit"),
-    //         Record::new("banana"),
-    //     ];
+        // let mut chain = chain_builder
+        //     .initialize(&engine)
+        //     .expect("failed to build chain");
 
-    //     let output = chain
-    //         .process(SmartModuleInput::try_from(input).expect("input"), &metrics)
-    //         .expect("process");
-    //     assert_eq!(output.successes.len(), 2); // one record passed
-    //     assert_eq!(output.successes[0].value.as_ref(), b"apple");
-    //     assert_eq!(output.successes[1].value.as_ref(), b"banana");
-
-    //     // build 2nd chain with different parameter
-    //     let mut chain_builder = SmartModuleChainBuilder::default();
-    //     chain_builder.add_smart_module(
-    //         SmartModuleConfig::builder()
-    //             .param("key", "b")
-    //             .build()
-    //             .unwrap(),
-    //         read_wasm_module(SM_FILTER_INIT),
-    //     );
-
-    //     let mut chain = chain_builder
-    //         .initialize(&engine)
-    //         .expect("failed to build chain");
-
-    //     let input = vec![
-    //         Record::new("apple"),
-    //         Record::new("fruit"),
-    //         Record::new("banana"),
-    //     ];
-    //     let output = chain
-    //         .process(SmartModuleInput::try_from(input).expect("input"), &metrics)
-    //         .expect("process");
-    //     assert_eq!(output.successes.len(), 1); // only banana
-    //     assert_eq!(output.successes[0].value.as_ref(), b"banana");
-    // }
+        // let input = vec![
+        //     Record::new("apple"),
+        //     Record::new("fruit"),
+        //     Record::new("banana"),
+        // ];
+        // let output = chain
+        //     .process(SmartModuleInput::try_from(input).expect("input"), &metrics)
+        //     .expect("process");
+        // assert_eq!(output.successes.len(), 1); // only banana
+        // assert_eq!(output.successes[0].value.as_ref(), b"banana");
+    }
 }
