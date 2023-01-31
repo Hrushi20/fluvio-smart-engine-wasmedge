@@ -3,9 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::fmt::{self, Debug};
 
 use fluvio_protocol::{Encoder, Decoder};
-use wasmedge_sdk::{ImportObject, ImportObjectBuilder, Func};
-use wasmedge_sdk::{Module,Store,Instance,CallingFrame,WasmValue,error::HostFuncError};
-use wasmedge_sys::{Memory};
+use wasmedge_sdk::{Module,Store,Instance,CallingFrame,WasmValue,error::HostFuncError,Memory,Caller,ImportObjectBuilder,Func};
 
 use tracing::{debug};
 use anyhow::{Error, Result};
@@ -102,7 +100,8 @@ impl SmartModuleInstanceContext{
        
         let copy_records_fn = move |_caller: CallingFrame, inputs: Vec<WasmValue>| -> Result<Vec<WasmValue>, HostFuncError> {
 
-            let memory = _caller.memory_mut(0).unwrap();
+            let caller = Caller::new(_caller);
+            let memory = caller.memory(0).unwrap();
 
             let ptr = inputs[0].to_i32() as i32;
             let len = inputs[1].to_i32() as i32;
@@ -156,16 +155,16 @@ impl SmartModuleInstanceContext{
         Ok((array_ptr as i32, length as i32, self.version as u32))
     }
 
-    pub(crate) fn read_output<D: Decoder + Default>(&mut self, store: &mut Store) -> Result<D> {
-        let bytes = self
-            .records_cb
-            .get()
-            .and_then(|m| m.copy_memory_from(store).ok())
-            .unwrap_or_default();
-        let mut output = D::default();
-        output.decode(&mut std::io::Cursor::new(bytes), self.version)?;
-        Ok(output)
-    }
+    // pub(crate) fn read_output<D: Decoder + Default>(&mut self, store: &mut Store) -> Result<D> {
+    //     let bytes = self
+    //         .records_cb
+    //         .get()
+    //         .and_then(|m| m.copy_memory_from(store).ok())
+    //         .unwrap_or_default();
+    //     let mut output = D::default();
+    //     output.decode(&mut std::io::Cursor::new(bytes), self.version)?;
+    //     Ok(output)
+    // }
 }
 
 pub(crate) trait SmartModuleTransform: Send + Sync {
@@ -193,7 +192,6 @@ impl<T: SmartModuleTransform + Any> DowncastableTransform for T {
     }
 }
 
-
 pub struct RecordsMemory {
     ptr: i32,
     len: i32,
@@ -202,7 +200,7 @@ pub struct RecordsMemory {
 
 impl RecordsMemory {
     fn copy_memory_from(&self, store: &mut Store) -> Result<Vec<u8>> {
-        let mut bytes = self.memory.get_data(self.ptr as u32, self.len as u32).unwrap();
+        let mut bytes = self.memory.read(self.ptr as u32, self.len as u32).unwrap();
         // self.memory.read(store, self.ptr as usize, &mut bytes)?;
         Ok(bytes)
     }
@@ -225,8 +223,8 @@ impl RecordsCallBack {
         write_inner.take();
     }
 
-    pub(crate) fn get(&self) -> Option<RecordsMemory> {
-        let reader = self.0.lock().unwrap();
-        // *reader
-    }
+    // pub(crate) fn get(&self,store:&mut Store) -> Option<RecordsMemory> {
+    //     let mut record = self.0.lock().unwrap();
+    //     return record.clone()
+    // }
 }
