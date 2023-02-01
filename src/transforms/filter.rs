@@ -89,6 +89,7 @@ mod test {
 
     const SM_FILTER: &str = "fluvio_smartmodule_filter";
     const SM_FILTER_INIT: &str = "fluvio_smartmodule_filter_init";
+    const SM_JSON_FILTER:&str = "json_filter";
 
     use crate::fixture::read_wasm_module;
 

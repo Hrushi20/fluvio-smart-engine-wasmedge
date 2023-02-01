@@ -27,7 +27,6 @@ impl SmartModuleInit {
         _store: &mut Store,
     ) -> Result<Option<Self>> {
         // ctx.get_wasm_func(name)
-        println!("wasm func init: {:?}",ctx.get_wasm_func(INIT_FN_NAME).unwrap());
         match ctx.get_wasm_func(INIT_FN_NAME) {
             Some(func) => Ok(Some(Self(func))),
             None => Ok(None)
