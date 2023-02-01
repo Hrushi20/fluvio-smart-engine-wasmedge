@@ -1,12 +1,10 @@
 # Fluvio Streaming data processing with WasmEdge 
 
 ## What is Fluvio?
-<hr/>
 
 Fluvio is an open-source data streaming platform with in-line computation capabilities. It utilizes Wasm to support user-defined compute functions in the data stream. 
 
 ## Aim-
-<hr/>
 To integrate WasmEdge as an alternative runtime for Fluvio.
 
 ## Current Status- 
