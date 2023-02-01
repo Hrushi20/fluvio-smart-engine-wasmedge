@@ -4,14 +4,12 @@ use std::{
 
 pub(crate) fn read_wasm_module(module_name: &str) -> Vec<u8> {
     let spu_dir = std::env::var("CARGO_MANIFEST_DIR").expect("target");
+    println!("spu_dir: {}",spu_dir);
     let wasm_path = PathBuf::from(spu_dir)
-        .parent()
-        .expect("parent")
-        .parent()
-        .expect("fluvio")
         .join(format!(
-            "/home/hrushi/Programming/OpenSource/WasmEdge/fluvio-smart-engine-wasmedge/{module_name}.wasm"
+            "{module_name}.wasm"
         ));
+
     read_module_from_path(wasm_path)
 }
 
