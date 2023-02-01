@@ -101,7 +101,8 @@ impl SmartModuleInstanceContext{
         let copy_records_fn = move |_caller: CallingFrame, inputs: Vec<WasmValue>| -> Result<Vec<WasmValue>, HostFuncError> {
 
             let caller = Caller::new(_caller);
-            let memory = caller.memory(0).unwrap();
+
+            let memory = caller.instance().unwrap().memory("test").unwrap();
 
             let ptr = inputs[0].to_i32() as i32;
             let len = inputs[1].to_i32() as i32;
@@ -113,10 +114,10 @@ impl SmartModuleInstanceContext{
 
         debug!("instantiating WASMtime");
         let import = ImportObjectBuilder::new()
-        .with_func::<((i32), (i32)), ()>("copy_records", copy_records_fn).expect("Coudn't initialize import func")
+        .with_func::<(i32, i32), ()>("copy_records", copy_records_fn).expect("Coudn't initialize import func")
         .build("env").expect("Couldn't build import object");
 
-        state.register_import_module(&mut engine.executor, &import);
+        state.register_import_module(&mut engine.executor, &import).expect("Cloudn't register import module");
         let instance = state.register_named_module(&mut engine.executor, "test", &module).expect("CLouddnl't create instance");
         // let instance = state
         //     .instantiate(&module, copy_records_fn)
@@ -138,7 +139,7 @@ impl SmartModuleInstanceContext{
     pub(crate) fn write_input<E: Encoder>(
         &mut self,
         input: &E,
-        store: &mut Store,
+        _store: &mut Store,
         engine: &mut SmartEngine
     ) -> Result<WasmSlice> {
         self.records_cb.clear();
@@ -149,7 +150,7 @@ impl SmartModuleInstanceContext{
             version = self.version,
             "input encoded"
         );
-        let array_ptr = memory::copy_memory_to_instance(store, &self.instance, &input_data,engine)?;
+        let array_ptr = memory::copy_memory_to_instance(&self.instance, &input_data,engine)?;
         let length = input_data.len();
         println!("Array_Ptr: {}, Length: {}, Version: {}",array_ptr,length,self.version);
         Ok((array_ptr as i32, length as i32, self.version as u32))
@@ -199,8 +200,8 @@ pub struct RecordsMemory {
 }
 
 impl RecordsMemory {
-    fn copy_memory_from(&self, store: &mut Store) -> Result<Vec<u8>> {
-        let mut bytes = self.memory.read(self.ptr as u32, self.len as u32).unwrap();
+    fn copy_memory_from(&self, _store: &mut Store) -> Result<Vec<u8>> {
+        let bytes = self.memory.read(self.ptr as u32, self.len as u32).unwrap();
         // self.memory.read(store, self.ptr as usize, &mut bytes)?;
         Ok(bytes)
     }

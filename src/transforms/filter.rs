@@ -15,8 +15,6 @@ use crate::{
 
 const FILTER_FN_NAME: &str = "filter";
 
-// type WasmFilterFn = TypedFunc<(i32, i32, u32), i32>;
-
 pub(crate) struct SmartModuleFilter(Func);
 
 impl Debug for SmartModuleFilter {
@@ -29,9 +27,12 @@ impl SmartModuleFilter {
     /// Try to create filter by matching function, if function is not found, then return empty
     pub fn try_instantiate(
         ctx: &SmartModuleInstanceContext,
-        store: &mut Store 
+        _store: &mut Store 
     ) -> Result<Option<Self>> {
-        Ok(Some(Self(ctx.get_wasm_func(FILTER_FN_NAME).unwrap())))
+        match ctx.get_wasm_func(FILTER_FN_NAME) {
+            Some(func) => Ok(Some(Self(func))),
+            None => Ok(None)
+        }
     }
 }
 
@@ -45,13 +46,18 @@ impl SmartModuleTransform for SmartModuleFilter {
     ) -> Result<SmartModuleOutput> {
 
         let slice = ctx.write_input(&input, &mut *store,engine)?;
+        println!("Slice: {:?}",slice);
+        println!("Before Filter_output");
         let filter_output = self.0.call(&mut engine.executor, vec![WasmValue::from_i32(slice.0),WasmValue::from_i32(slice.1),WasmValue::from_i32(slice.2 as i32)])?;
+        println!("After Filter_output");
 
-        // if filter_output < 0 {
-        //     let internal_error = SmartModuleTransformErrorStatus::try_from(filter_output)
-        //         .unwrap_or(SmartModuleTransformErrorStatus::UnknownError);
-        //     return Err(internal_error.into());
-        // }
+        let filter_output = filter_output[0].to_i32();
+
+        if filter_output < 0 {
+            let internal_error = SmartModuleTransformErrorStatus::try_from(filter_output)
+                .unwrap_or(SmartModuleTransformErrorStatus::UnknownError);
+            return Err(internal_error.into());
+        }
 
         Ok(SmartModuleOutput::default())
         // let output: SmartModuleOutput = ctx.read_output(store)?;
@@ -66,7 +72,7 @@ impl SmartModuleTransform for SmartModuleFilter {
 #[cfg(test)]
 mod test {
 
-    use wasmedge_sdk::{config::ConfigBuilder, params, Vm, WasmValue, Executor};
+    use wasmedge_sdk::{config::ConfigBuilder, Executor};
 
 
 
@@ -90,7 +96,7 @@ mod test {
     #[test]
     fn test_filter() {
         let config = ConfigBuilder::default().build().unwrap();
-        let mut executor = Executor::new(Some(&config),None).unwrap();
+        let executor = Executor::new(Some(&config),None).unwrap();
         let mut engine = SmartEngine {
             executor 
         };
@@ -109,13 +115,13 @@ mod test {
         assert_eq!(
             chain.instances().first().expect("first").transform().name(),
             super::FILTER_FN_NAME
-        )
+        );
 
-        // let metrics = SmartModuleChainMetrics::default();
-        // let input = vec![Record::new("hello world")];
-        // let output = chain
-        //     .process(SmartModuleInput::try_from(input).expect("input"), &metrics)
-        //     .expect("process");
+        let metrics = SmartModuleChainMetrics::default();
+        let input = vec![Record::new("hello world")];
+        let output = chain
+            .process(SmartModuleInput::try_from(input).expect("input"), &metrics,&mut engine)
+            .expect("process");
         // assert_eq!(output.successes.len(), 0); // no records passed
 
         // let input = vec![Record::new("apple"), Record::new("fruit")];
@@ -130,7 +136,7 @@ mod test {
     #[test]
     fn test_filter_with_init_invalid_param() {
         let config = ConfigBuilder::default().build().unwrap();
-        let mut executor = Executor::new(Some(&config),None).unwrap();
+        let executor = Executor::new(Some(&config),None).unwrap();
         let mut engine = SmartEngine {
             executor 
         };
@@ -155,7 +161,7 @@ mod test {
     fn test_filter_with_init_ok() {
 
         let config = ConfigBuilder::default().build().unwrap();
-        let mut executor = Executor::new(Some(&config),None).unwrap();
+        let executor = Executor::new(Some(&config),None).unwrap();
         let mut engine = SmartEngine {
             executor 
         };
@@ -184,12 +190,12 @@ mod test {
 
         assert!(instance.get_init().is_some());
 
-        // let metrics = SmartModuleChainMetrics::default();
+        let metrics = SmartModuleChainMetrics::default();
 
-        // let input = vec![Record::new("hello world")];
-        // let output = chain
-        //     .process(SmartModuleInput::try_from(input).expect("input"), &metrics,&mut engine)
-        //     .expect("process");
+        let input = vec![Record::new("hello world")];
+        let output = chain
+            .process(SmartModuleInput::try_from(input).expect("input"), &metrics,&mut engine)
+            .expect("process");
         // assert_eq!(output.successes.len(), 0); // no records passed
 
         // let input = vec![

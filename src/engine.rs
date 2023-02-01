@@ -1,5 +1,4 @@
-use wasmedge_sdk::{ Executor, Module, config::ConfigBuilder, Store };
-use wasmedge_sys::Config;
+use wasmedge_sdk::{ Executor, Module, Store };
 use std::fmt::{self, Debug};
 
 use anyhow::Result;
@@ -10,7 +9,7 @@ use fluvio_smartmodule::dataplane::smartmodule::{
     SmartModuleExtraParams, SmartModuleInput, SmartModuleOutput,
 };
 
-use crate::{transforms::{self, create_transform}, instance::{SmartModuleInstanceContext, SmartModuleInstance}, init::SmartModuleInit, metrics::SmartModuleChainMetrics};
+use crate::{transforms::{create_transform}, instance::{SmartModuleInstanceContext, SmartModuleInstance}, init::SmartModuleInit, metrics::SmartModuleChainMetrics};
 
 const DEFAULT_SMARTENGINE_VERSION: i16 = 17;
 pub struct SmartEngine{

@@ -1,6 +1,5 @@
 pub(crate) mod filter;
 
-
 pub(crate) use instance::create_transform;
 
 mod instance {
@@ -20,7 +19,7 @@ mod instance {
 
     pub(crate) fn create_transform(
         ctx: &SmartModuleInstanceContext,
-        initial_data: SmartModuleInitialData,
+        _initial_data: SmartModuleInitialData,
         store: &mut Store,
     ) -> Result<Box<dyn DowncastableTransform>> {
         if let Some(tr) = SmartModuleFilter::try_instantiate(ctx, store)?
