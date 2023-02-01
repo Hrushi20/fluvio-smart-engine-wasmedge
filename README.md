@@ -5,7 +5,7 @@
 Fluvio is an open-source data streaming platform with in-line computation capabilities. It utilizes Wasm to support user-defined compute functions in the data stream. 
 
 ## Aim-
-To integrate WasmEdge as an alternative runtime for Fluvio.
+To integrate WasmEdge as an alternative runtime for [FluvioSmartEngine](https://github.com/infinyon/fluvio/tree/master/crates/fluvio-smartengine) crate.
 
 ## Current Status- 
 * While executing the wasm function, error being thrown (invalid memory reference) [More](https://github.com/WasmEdge/WasmEdge/discussions/2232#discussioncomment-4832922)
