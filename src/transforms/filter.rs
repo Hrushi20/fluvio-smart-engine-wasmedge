@@ -59,9 +59,8 @@ impl SmartModuleTransform for SmartModuleFilter {
             return Err(internal_error.into());
         }
 
-        Ok(SmartModuleOutput::default())
-        // let output: SmartModuleOutput = ctx.read_output(store)?;
-        // Ok(output)
+        let output: SmartModuleOutput = ctx.read_output(store)?;
+        Ok(output)
     }
 
     fn name(&self) -> &str {
@@ -123,14 +122,14 @@ mod test {
         let output = chain
             .process(SmartModuleInput::try_from(input).expect("input"), &metrics,&mut engine)
             .expect("process");
-        // assert_eq!(output.successes.len(), 0); // no records passed
+        assert_eq!(output.successes.len(), 0); // no records passed
 
-        // let input = vec![Record::new("apple"), Record::new("fruit")];
-        // let output = chain
-        //     .process(SmartModuleInput::try_from(input).expect("input"), &metrics)
-        //     .expect("process");
-        // assert_eq!(output.successes.len(), 1); // one record passed
-        // assert_eq!(output.successes[0].value.as_ref(), b"apple");
+        let input = vec![Record::new("apple"), Record::new("fruit")];
+        let output = chain
+            .process(SmartModuleInput::try_from(input).expect("input"), &metrics,&mut engine)
+            .expect("process");
+        assert_eq!(output.successes.len(), 1); // one record passed
+        assert_eq!(output.successes[0].value.as_ref(), b"apple");
     }
 
     #[ignore]
@@ -197,44 +196,44 @@ mod test {
         let output = chain
             .process(SmartModuleInput::try_from(input).expect("input"), &metrics,&mut engine)
             .expect("process");
-        // assert_eq!(output.successes.len(), 0); // no records passed
+        assert_eq!(output.successes.len(), 0); // no records passed
 
-        // let input = vec![
-        //     Record::new("apple"),
-        //     Record::new("fruit"),
-        //     Record::new("banana"),
-        // ];
+        let input = vec![
+            Record::new("apple"),
+            Record::new("fruit"),
+            Record::new("banana"),
+        ];
 
-        // let output = chain
-        //     .process(SmartModuleInput::try_from(input).expect("input"), &metrics)
-        //     .expect("process");
-        // assert_eq!(output.successes.len(), 2); // one record passed
-        // assert_eq!(output.successes[0].value.as_ref(), b"apple");
-        // assert_eq!(output.successes[1].value.as_ref(), b"banana");
+        let output = chain
+            .process(SmartModuleInput::try_from(input).expect("input"), &metrics,&mut engine)
+            .expect("process");
+        assert_eq!(output.successes.len(), 2); // one record passed
+        assert_eq!(output.successes[0].value.as_ref(), b"apple");
+        assert_eq!(output.successes[1].value.as_ref(), b"banana");
 
-        // // build 2nd chain with different parameter
-        // let mut chain_builder = SmartModuleChainBuilder::default();
-        // chain_builder.add_smart_module(
-        //     SmartModuleConfig::builder()
-        //         .param("key", "b")
-        //         .build()
-        //         .unwrap(),
-        //     read_wasm_module(SM_FILTER_INIT),
-        // );
+        // build 2nd chain with different parameter
+        let mut chain_builder = SmartModuleChainBuilder::default();
+        chain_builder.add_smart_module(
+            SmartModuleConfig::builder()
+                .param("key", "b")
+                .build()
+                .unwrap(),
+            read_wasm_module(SM_FILTER_INIT),
+        );
 
-        // let mut chain = chain_builder
-        //     .initialize(&engine)
-        //     .expect("failed to build chain");
+        let mut chain = chain_builder
+            .initialize(&mut engine)
+            .expect("failed to build chain");
 
-        // let input = vec![
-        //     Record::new("apple"),
-        //     Record::new("fruit"),
-        //     Record::new("banana"),
-        // ];
-        // let output = chain
-        //     .process(SmartModuleInput::try_from(input).expect("input"), &metrics)
-        //     .expect("process");
-        // assert_eq!(output.successes.len(), 1); // only banana
-        // assert_eq!(output.successes[0].value.as_ref(), b"banana");
+        let input = vec![
+            Record::new("apple"),
+            Record::new("fruit"),
+            Record::new("banana"),
+        ];
+        let output = chain
+            .process(SmartModuleInput::try_from(input).expect("input"), &metrics,&mut engine)
+            .expect("process");
+        assert_eq!(output.successes.len(), 1); // only banana
+        assert_eq!(output.successes[0].value.as_ref(), b"banana");
     }
 }
