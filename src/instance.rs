@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::fmt::{self, Debug};
 
 use fluvio_protocol::{Encoder, Decoder};
+use wasmedge_sdk::error::WasmEdgeError;
 use wasmedge_sdk::{Module,Store,Instance,CallingFrame,WasmValue,error::HostFuncError,Memory,Caller,ImportObjectBuilder,Func};
 
 use tracing::{debug};
@@ -156,16 +157,16 @@ impl SmartModuleInstanceContext{
         Ok((array_ptr as i32, length as i32, self.version as u32))
     }
 
-    // pub(crate) fn read_output<D: Decoder + Default>(&mut self, store: &mut Store) -> Result<D> {
-    //     let bytes = self
-    //         .records_cb
-    //         .get()
-    //         .and_then(|m| m.copy_memory_from(store).ok())
-    //         .unwrap_or_default();
-    //     let mut output = D::default();
-    //     output.decode(&mut std::io::Cursor::new(bytes), self.version)?;
-    //     Ok(output)
-    // }
+    pub(crate) fn read_output<D: Decoder + Default>(&mut self, store: &mut Store) -> Result<D> {
+        let bytes = self
+            .records_cb
+            .get()
+            .and_then(|m| m.copy_memory_from(store).ok())
+            .unwrap_or_default();
+        let mut output = D::default();
+        output.decode(&mut std::io::Cursor::new(bytes), self.version)?;
+        Ok(output)
+    }
 }
 
 pub(crate) trait SmartModuleTransform: Send + Sync {
@@ -193,6 +194,7 @@ impl<T: SmartModuleTransform + Any> DowncastableTransform for T {
     }
 }
 
+#[derive(Clone)]
 pub struct RecordsMemory {
     ptr: i32,
     len: i32,
@@ -224,8 +226,8 @@ impl RecordsCallBack {
         write_inner.take();
     }
 
-    // pub(crate) fn get(&self,store:&mut Store) -> Option<RecordsMemory> {
-    //     let mut record = self.0.lock().unwrap();
-    //     return record.clone()
-    // }
+    pub(crate) fn get(&self) -> Option<RecordsMemory> {
+        let record = self.0.lock().unwrap();
+        return record.clone()
+    }
 }
