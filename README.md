@@ -22,13 +22,13 @@ The repo already contains filter wasm files.
 ```
 
 The filter value can be changed by editing array at [Line](https://github.com/Hrushi20/fluvio-smart-engine-wasmedge/blob/main/src/main.rs#L65).
-<br>
+<br><br>
 Output when Filter value is apple: 
 
 ``` rust
     let input = SmartModuleInput::try_from(vec![Record::new("apple")])?;           // Line 65 main.rs
 ```
-(Pic)
+![Apple](./apple.png)
 
 <br>
 Output when Filter value is hello world:
@@ -37,7 +37,7 @@ Output when Filter value is hello world:
      let input = SmartModuleInput::try_from(vec![Record::new("hello world")])?;    // Line 65 main.rs 
 ```
 
-(Pic)
+![Hello World](./hello-world.png)
 
 
 This repository is created as a solution to pretest [LFX Mentorship 2023 01-Mar-May Challenge - for #2231 #2232](https://github.com/WasmEdge/WasmEdge/discussions/2232)
