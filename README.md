@@ -9,8 +9,10 @@ To integrate WasmEdge as an alternative runtime for [FluvioSmartEngine](https://
 
 ## About Wasm file-
 
-For test, using the fluvio_smartmodule_filter.wasm file. The function filters the data if input text contains `a` in it. <br>
-[Code](https://github.com/infinyon/fluvio/blob/master/smartmodule/examples/filter/src/lib.rs) before compiling the filter function to wasm file.
+* For test, using the fluvio_smartmodule_filter.wasm file. 
+* The function filters the data if input text contains `a` in it.
+* [Code](https://github.com/infinyon/fluvio/blob/master/smartmodule/examples/filter/src/lib.rs) before compiling the filter function to wasm file.
+* The above code file can be converted into wasm file by running `make` command in `fluvio/smartmodule/examples` [directory](https://github.com/infinyon/fluvio/tree/master/smartmodule/examples) in fluvio repository
 
 
 
