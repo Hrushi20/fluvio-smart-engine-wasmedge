@@ -49,10 +49,8 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .build("env")?;
 
 
-    let stats_config = StatisticsConfigOptions::new();
-    let stats_config = stats_config.count_instructions(true);
-    let stats_config = stats_config.measure_cost(true);
-    let stats_config = stats_config.measure_time(true);
+    let stats_config = StatisticsConfigOptions::new().count_instructions(true).measure_cost(true).measure_time(true);
+
     //     // create an executor
     let config = ConfigBuilder::with_statistics_config(ConfigBuilder::default(),stats_config).build()?;
 
