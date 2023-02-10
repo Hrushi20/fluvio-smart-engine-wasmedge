@@ -1,4 +1,4 @@
-use wasmedge_sdk::{config::ConfigBuilder, WasmValue, ImportObjectBuilder, Module, Executor,Store, Memory,CallingFrame, error::HostFuncError, Caller, Instance};
+use wasmedge_sdk::{config::{ConfigBuilder, StatisticsConfigOptions}, WasmValue, ImportObjectBuilder, Module, Executor,Store, Memory,CallingFrame, error::HostFuncError, Caller, Instance, Statistics};
 use std::{sync::{Arc, Mutex}, vec};
 use fluvio_smartmodule::{
     Record 
@@ -49,10 +49,17 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     .build("env")?;
 
 
+    let stats_config = StatisticsConfigOptions::new();
+    let stats_config = stats_config.count_instructions(true);
+    let stats_config = stats_config.measure_cost(true);
+    let stats_config = stats_config.measure_time(true);
     //     // create an executor
-    let config = ConfigBuilder::default().build().unwrap();
-    let mut executor = Executor::new(Some(&config), None)?;
-    let module = Module::from_bytes(Some(&config), bytes)?;
+    let config = ConfigBuilder::with_statistics_config(ConfigBuilder::default(),stats_config).build()?;
+
+    let mut stats = Statistics::new().expect("Unable to init statistics struct");
+
+    let mut executor = Executor::new(Some(&config), Some(&mut stats))?;
+    let module = Module::from_bytes(None, bytes)?;
 
     let mut store = Store::new().unwrap();
 
@@ -62,9 +69,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let fnc = instance.func("filter").unwrap();
 
-    let input = SmartModuleInput::try_from(vec![Record::new("apple")])?;
+    let input = SmartModuleInput::try_from(vec![Record::new("hello world")])?;
     let input = smart_module_instance_context.write_input(&input, &instance, &mut executor).unwrap();
     
+    println!("Input func: {:?}", input);
     let output = fnc.call(&mut executor, vec![WasmValue::from_i32(input.0),WasmValue::from_i32(input.1),WasmValue::from_i32(input.2 as i32)])?;
     let output = output[0].to_i32();
     
