@@ -4,7 +4,6 @@ use fluvio_smartmodule::{
     Record 
 };
 
-
 use fluvio_smartmodule::dataplane::smartmodule::{
     SmartModuleInput, SmartModuleOutput
 };
@@ -12,13 +11,12 @@ use fluvio_smartmodule::dataplane::smartmodule::{
 use fluvio_protocol::{Encoder, Decoder};
 use anyhow::{Result, Error, anyhow};
 
-
-
-fn main() -> Result<(), Box<dyn std::error::Error>> {
+fn filter(args: Vec<String>) -> Result<SmartModuleOutput, Box<dyn std::error::Error>> {
 
     let cb = Arc::new(RecordsCallBack::new());
     let records_cb = cb.clone();
 
+    // Import function to be passed to WasmEdge 
     let copy_records_fn = move |_caller: CallingFrame,
             inputs: Vec<WasmValue>|
         -> Result<Vec<WasmValue>, HostFuncError> {
@@ -36,41 +34,45 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let mut smart_module_instance_context = SmartModuleInstanceContext::new(records_cb);
     
-    let args: Vec<String> = std::env::args().collect();
-    println!("args: {:?}", args);
-
+    // Get the path of the wasm file
     let wasm_lib_file = &args[1];
 
+    // Store all the inputs required for the filter func
+    let mut records:Vec<Record> = Vec::new();
+
+    for i in 2..args.len() {
+        let input_test_data = &args[i];
+        records.push(Record::new(input_test_data.to_string()));
+    }
+
+    // Convert the wasm file to bytes
     let bytes = read_wasm_module(&wasm_lib_file);
 
-
+    // Wasm function requires an import function. Passing the copy_records_fn as import for wasm to execute it.
     let import = ImportObjectBuilder::new()
     .with_func::<(i32,i32),()>("copy_records", copy_records_fn)?
     .build("env")?;
 
-
+    // Configuration for WasmEdge runtime
     let stats_config = StatisticsConfigOptions::new().count_instructions(true).measure_cost(true).measure_time(true);
-
-    //     // create an executor
     let config = ConfigBuilder::with_statistics_config(ConfigBuilder::default(),stats_config).build()?;
-
     let mut stats = Statistics::new().expect("Unable to init statistics struct");
 
+    // Init/Configure WasmEdge to execute the wasm file
     let mut executor = Executor::new(Some(&config), Some(&mut stats))?;
     let module = Module::from_bytes(None, bytes)?;
-
     let mut store = Store::new().unwrap();
-
     store.register_import_module(&mut executor, &import).unwrap();
     let instance = store.register_active_module(&mut executor, &module).unwrap();
 
-
     let fnc = instance.func("filter").unwrap();
 
-    let input = SmartModuleInput::try_from(vec![Record::new("hello world")])?;
+    let input = SmartModuleInput::try_from(records)?;
     let input = smart_module_instance_context.write_input(&input, &instance, &mut executor).unwrap();
     
     println!("Input func: {:?}", input);
+    
+    // Executing the filter-wasm function using WasmEdge
     let output = fnc.call(&mut executor, vec![WasmValue::from_i32(input.0),WasmValue::from_i32(input.1),WasmValue::from_i32(input.2 as i32)])?;
     let output = output[0].to_i32();
     
@@ -79,7 +81,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Output value: {:?}",output);
     
-    Ok(())
+    Ok(output)
+
+}
+
+fn main(){
+    let args: Vec<String> = std::env::args().collect();
+    let _output = filter(args).unwrap();
 }
 
 use std::{
@@ -204,3 +212,39 @@ pub(crate) fn copy_memory_to_instance(
     Ok(guest_ptr_offset)
 }
 
+#[cfg(test)]
+mod test {
+    use std::vec;
+
+    use crate::filter;
+
+
+    #[test]     
+    fn test_filter_with_correct_input(){
+        let args = vec![String::from(" "),String::from("fluvio_smartmodule_filter"),String::from("banana"),String::from("apple")];
+
+        let output = filter(args).expect("Couldn't execute filter function");
+
+        assert_eq!(output.successes.len(),2);
+        assert_eq!(output.successes[0].value.as_ref(),b"banana");
+    }
+
+    #[test]     
+    fn test_filter_with_incorrect_input(){
+        let args = vec![String::from(" "),String::from("fluvio_smartmodule_filter"),String::from("hello world")]; 
+
+        let output = filter(args).expect("Couldn't execute filter function");
+
+        assert_eq!(output.successes.len(),0);
+    }
+
+    #[test]     
+    fn test_filter_with_mixed_input(){
+        let args = vec![String::from(" "),String::from("fluvio_smartmodule_filter"),String::from("hello world"),String::from("apple")]; 
+
+        let output = filter(args).expect("Couldn't execute filter function");
+
+        assert_eq!(output.successes.len(),1);
+        assert_eq!(output.successes[0].value.as_ref(),b"apple");
+    }
+}
