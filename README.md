@@ -10,7 +10,7 @@ To integrate WasmEdge as an alternative runtime for [FluvioSmartEngine](https://
 ## About Wasm file-
 
 * For test, using the fluvio_smartmodule_filter.wasm file. 
-* The function filters the data if input text contains `a` in it.
+* The function filters the data if input text contains `a` in it i.e it accepts words containing 'a' in it and rejects remaning words.
 * [Code](https://github.com/infinyon/fluvio/blob/master/smartmodule/examples/filter/src/lib.rs) before compiling the filter function to wasm file.
 * The above code file can be converted into wasm file by running `make` command in `fluvio/smartmodule/examples` [directory](https://github.com/infinyon/fluvio/tree/master/smartmodule/examples) in fluvio repository
 
@@ -19,27 +19,43 @@ To integrate WasmEdge as an alternative runtime for [FluvioSmartEngine](https://
 ## Run project-
 The repo already contains filter wasm files. 
 
+Output when input is apple: 
 ```rust
-    cargo run fluvio_smartmodule_filter 
+    cargo run fluvio_smartmodule_filter apple  
 ```
 
-The filter value can be changed by editing array at [Line](https://github.com/Hrushi20/fluvio-smart-engine-wasmedge/blob/main/src/main.rs#L70).
-<br><br>
-Output when Filter value is apple: 
-
-``` rust
-    let input = SmartModuleInput::try_from(vec![Record::new("apple")])?;           // Line 70 main.rs
-```
 ![Apple](./apple.png)
 
 <br>
-Output when Filter value is hello world:
 
-``` rust
-     let input = SmartModuleInput::try_from(vec![Record::new("hello world")])?;    // Line 70 main.rs 
+Output when input is hello world:
+```rust
+    cargo run fluvio_smartmodule_filter hello-world  
 ```
 
 ![Hello World](./hello-world.png)
+
+#### Note-
+Multiple inputs can be passed to the wasm function through cli using- 
+```rust
+    cargo run fluvio_smartmodule_filter hello-world apple banana
+```
+
+## Tests- 
+Added tests to the code.  
+```rust
+    cargo test 
+```
+
+Output of test
+```
+test test::test_filter_with_incorrect_input ... ok
+test test::test_filter_with_correct_input ... ok
+test test::test_filter_with_mixed_input ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+```
+
 
 ## Statistics- 
 The code is configured to generate statistics during execution of wasm functions in wasmedge. 
@@ -55,6 +71,5 @@ The code is configured to generate statistics during execution of wasm functions
     // create an executor
     let mut executor = Executor::new(Some(&config), Some(&mut stats))?;
 ```
-
 
 This repository is created as a solution to pretest [LFX Mentorship 2023 01-Mar-May Challenge - for #2231 #2232](https://github.com/WasmEdge/WasmEdge/discussions/2232)
